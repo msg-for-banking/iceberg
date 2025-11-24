@@ -153,6 +153,11 @@ public class JdbcCatalog extends BaseMetastoreViewCatalog
             properties, JdbcUtil.UPDATE_CATALOG_SCHEMA_IF_NECESSARY_PROPERTY, initializeCatalogTables);
     if (updateSchemaIfRequired) {
       updateSchemaIfRequired();
+    } else {
+      schemaVersion =
+          JdbcUtil.SchemaVersion.valueOf(
+              PropertyUtil.propertyAsString(
+                  properties, JdbcUtil.SCHEMA_VERSION_PROPERTY, JdbcUtil.SchemaVersion.V0.name()));
     }
 
     this.closeableGroup = new CloseableGroup();
