@@ -19,6 +19,7 @@
 package org.apache.iceberg.flink.sink.dynamic;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.Collections;
 import java.util.Map;
@@ -31,6 +32,7 @@ import org.apache.flink.table.data.StringData;
 import org.apache.iceberg.DistributionMode;
 import org.apache.iceberg.PartitionSpec;
 import org.apache.iceberg.Schema;
+import org.apache.iceberg.SnapshotRef;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.relocated.com.google.common.collect.Sets;
 import org.apache.iceberg.types.Types;
@@ -43,7 +45,7 @@ class TestHashKeyGenerator {
           Types.NestedField.required(1, "id", Types.IntegerType.get()),
           Types.NestedField.required(2, "data", Types.StringType.get()));
 
-  private static final String BRANCH = "main";
+  private static final String BRANCH = SnapshotRef.MAIN_BRANCH;
   private static final TableIdentifier TABLE_IDENTIFIER = TableIdentifier.of("default", "table");
 
   @Test
@@ -155,6 +157,34 @@ class TestHashKeyGenerator {
     assertThat(getSubTaskId(writeKey1, writeParallelism, maxWriteParallelism)).isEqualTo(1);
     assertThat(getSubTaskId(writeKey2, writeParallelism, maxWriteParallelism)).isEqualTo(1);
     assertThat(getSubTaskId(writeKey3, writeParallelism, maxWriteParallelism)).isEqualTo(0);
+  }
+
+  @Test
+  void testFailOnNonPositiveWriteParallelism() {
+    final int maxWriteParallelism = 5;
+    HashKeyGenerator generator = new HashKeyGenerator(16, maxWriteParallelism);
+
+    assertThatThrownBy(
+        () -> {
+          getWriteKey(
+              generator,
+              PartitionSpec.unpartitioned(),
+              DistributionMode.NONE,
+              -1, // writeParallelism
+              Collections.emptySet(),
+              GenericRowData.of());
+        });
+
+    assertThatThrownBy(
+        () -> {
+          getWriteKey(
+              generator,
+              PartitionSpec.unpartitioned(),
+              DistributionMode.NONE,
+              0, // writeParallelism
+              Collections.emptySet(),
+              GenericRowData.of());
+        });
   }
 
   @Test
